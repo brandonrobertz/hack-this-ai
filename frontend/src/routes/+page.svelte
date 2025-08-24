@@ -1,12 +1,18 @@
 <script>
+  import { onMount } from 'svelte';
+
+  let level = $state(0);
+  let description = $state("Welcome to Hack this AI challenge. The page is loading...");
+  let levelComplete = $state(false);
+
   let trace = $state([]);
   let input = $state("");
-  let secret = $state("");
   let loading = $state(false);
-  let level = $state(2);
-  let levelComplete = $state(false);
+  let secret = $state("");
   let checkOuput = $state("");
   const cols = 72;
+
+  const API_URL = ""
 
   async function send() {
     const inputText = input;
@@ -19,13 +25,24 @@
     await ask_llm(inputText);
   };
 
+  async function get(path) {
+      const response = await fetch(`${API_URL}${path}`, {
+      method: 'GET',
+    });
+    return await response.text();
+  }
+
+  async function post(path, data) {
+    const response = await fetch(`${API_URL}${path}`, {
+      method: 'POST',
+      body: data,
+    });
+    return await response.text();
+  }
+
   async function ask_llm(inputText) {
     console.log("sending", inputText);
-    const response = await fetch(`http://192.168.0.33:8000/c${level}`, {
-      method: 'POST',
-      body: inputText,
-    });
-    const output = await response.text();
+    const output = await post(`/c${level}`, inputText);
     loading = false;
     trace.push({
       who: "llm",
@@ -34,17 +51,14 @@
   }
 
   async function check() {
-    const response = await fetch(`http://192.168.0.33:8000/c${level}?secret=${secret}`, {
-      method: 'GET',
-    });
-    const output = await response.text();
+    const output = await get(`/c${level}?secret=${secret}`);
     checkOuput = output;
     if (output === "Success!") {
       levelComplete = true;
     }
   }
 
-  function nextLevel() {
+  async function nextLevel() {
     level += 1;
     trace = [];
     input = "";
@@ -52,18 +66,18 @@
     loading = false;
     levelComplete = false;
     checkOuput = "";
+    description = await get(`/c${level}`);
   }
+
+  onMount(async () => {
+    description = await get(`/c${level}`);
+  });
 </script>
 
 <h1>Hack this AI</h1>
 <div class="main">
   <div class="trace">
-    <p>Level: {level}</p>
-    {#if level == 1}
-      <p>Get the code from the helpful LLM.</p>
-    {:else if level == 2}
-      <p>Same LLM as before. It's got a secret code, but now there's a filter in front of the response.</p>
-    {/if}
+    <pre>{description}</pre>
     {#each trace as line}
       <pre class="{line.who}">{line.who}: {line.text}</pre>
     {/each}
@@ -74,20 +88,22 @@
 
   <div class="controls">
     <div>
+      <p>Current Level: {level}</p>
       <textarea cols={cols} rows={15} bind:value={input}></textarea>
       <br>
       <button onclick={() => { send() }}>Send</button>
     </div>
 
-    <div>
+    <div class="secret">
       <input bind:value={secret} placeholder="Enter secret here..." />
       <button onclick={() => { check() }}>Check</button>
       {#if checkOuput}
         <pre>{checkOuput}</pre>
       {/if}
       {#if levelComplete}
-        <button onclick={nextLevel}>Start level {level}</button>
+        <button onclick={nextLevel}>Go to level {level+1}</button>
       {/if}
+      <button onclick={nextLevel}>Skip this level</button>
     </div>
   </div><!-- .controls -->
 </div>
@@ -106,7 +122,7 @@
     display: flex;
     flex-flow: row wrap;
     justify-content: space-evenly;
-    max-height: calc(100vh - 120px);
+    height: calc(100vh - 120px);
   }
 
   .trace {
@@ -115,11 +131,11 @@
   }
 
   .trace pre.llm {
-    border: 1px solid blue;
+    border: 2px solid grey;
   }
 
   .trace pre.me {
-    border: 1px solid grey;
+    border: 2px solid blue;
   }
 
   .trace pre {
@@ -130,5 +146,10 @@
   .controls {
     display: flex;
     flex-flow: column wrap;
+    height: 100%;
+  }
+
+  .controls .secret {
+    margin-top: 2em;
   }
 </style>
