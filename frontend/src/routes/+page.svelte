@@ -110,10 +110,13 @@
         <p>You won!! No AI is a match for you.</p>
         <p>Contact me if you found anything in here interesting: brandon@bxroberts.org</p>
       {:else}
-       <button onclick={nextLevel}>Skip this level</button>
+       <button class="skip-level" onclick={nextLevel}>Skip this level</button>
      {/if}
     </div>
   </div><!-- .controls -->
+</div>
+<div class="end-info">
+  By <a href="https://bxroberts.org">Brandon Roberts</a>
 </div>
 
 <style>
@@ -160,5 +163,32 @@
 
   .controls .secret {
     margin-top: 2em;
+  }
+
+  @media (max-width:1300px)  {
+    .controls {
+      height: auto;
+    }
+
+    .main {
+      height: auto;
+    }
+
+    .trace {
+      height: auto;
+    }
+  }
+
+  .skip-level {
+    border: none;
+    background-color: transparent;
+    color: grey;
+  }
+
+  .end-info {
+    text-align: center;
+    font-size: 0.9em;
+    color: grey;
+    padding: 1.2em;
   }
 </style>
