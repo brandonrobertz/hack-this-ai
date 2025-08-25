@@ -71,6 +71,10 @@
 
   onMount(async () => {
     description = await get(`/c${level}`);
+    window.addEventListener('beforeunload', (event) => {
+      event.preventDefault();
+      event.returnValue = '';
+    });
   });
 </script>
 
@@ -100,10 +104,14 @@
       {#if checkOuput}
         <pre>{checkOuput}</pre>
       {/if}
-      {#if levelComplete}
+      {#if levelComplete && level+1 < 5}
         <button onclick={nextLevel}>Go to level {level+1}</button>
-      {/if}
-      <button onclick={nextLevel}>Skip this level</button>
+      {:else if levelComplete && level+1 === 5}
+        <p>You won!! No AI is a match for you.</p>
+        <p>Contact me if you found anything in here interesting: brandon@bxroberts.org</p>
+      {:else}
+       <button onclick={nextLevel}>Skip this level</button>
+     {/if}
     </div>
   </div><!-- .controls -->
 </div>
@@ -126,7 +134,8 @@
   }
 
   .trace {
-    max-width: 900px;
+    height: 100%;
+    max-width: 700px;
     overflow-y: auto;
   }
 
