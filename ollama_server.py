@@ -20,7 +20,10 @@ parser = argparse.ArgumentParser(
 )
 parser.add_argument('--model', default="qwen2", help="Name of the local ollama model to run. Full list of models: https://ollama.com/search")
 parser.add_argument('--max-tokens', default=256, help="Maximum number of tokens the model can output. Rule of thumb: a token is approx 3 characters.")
+parser.add_argument('--port', type=int, default=8000, help="Port to serve on.")
 args = parser.parse_args()
+
+PORT = args.port
 
 
 try:
@@ -103,7 +106,15 @@ def generate_random_hex_string(length):
 
 
 class Challenge:
-    WRONG_SECRET_BOX_MSG = "If you got a secret, put it the secret box. It's below the main text box!"
+    WRONG_SECRET_BOX_MSG = """Oops! It looks like you tried to enter a secret into the message input box.
+
+If you got a secret, put it the secret box instead. (It's below the main text box.)"""
+
+    def is_secret(self, message):
+        c_message = message.strip()
+        if re.match("^[a-z0-9]+$", c_message):
+            return True
+        return False
 
     def on_get(self, req, resp):
         secret = req.get_param('secret') or ''
@@ -130,8 +141,11 @@ class Challenge:
     @falcon.before(max_body(64 * 1024))
     def on_post(self, req, resp):
         data = req.bounded_stream.read().decode('utf-8')
-        if data == self.SECRET:
-            return self.WRONG_SECRET_BOX_MSG
+        if self.is_secret(data):
+            resp.status = falcon.HTTP_200
+            resp.content_type = falcon.MEDIA_TEXT
+            resp.text = self.WRONG_SECRET_BOX_MSG
+            return
         print("data:", data)
         response = ask_llm(self.PROMPT.format(SECRET=self.SECRET, data=data))
         write_log(self.PROMPT, data, response)
@@ -203,8 +217,11 @@ Answer the following question from a user, given these instructons:
 
     def on_post(self, req, resp):
         data = req.bounded_stream.read().decode('utf-8')
-        if data == self.SECRET:
-            return WRONG_SECRET_BOX_MSG
+        if self.is_secret(data):
+            resp.status = falcon.HTTP_200
+            resp.content_type = falcon.MEDIA_TEXT
+            resp.text = self.WRONG_SECRET_BOX_MSG
+            return
         print("data:", data)
         response = ask_llm(self.PROMPT.format(SECRET=self.SECRET, data=data))
         write_log(self.PROMPT, data, response)
@@ -339,6 +356,6 @@ app.add_route('/c4', c4)
 app.add_static_route('/', os.path.join(os.getcwd(),"./frontend/build"))
 
 if __name__ == '__main__':
-    with make_server('', 8000, app) as httpd:
-        print('Serving on port 8000...')
+    with make_server('', PORT, app) as httpd:
+        print(f'Serving on port {PORT}...')
         httpd.serve_forever()
